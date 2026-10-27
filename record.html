@@ -97,14 +97,29 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     if(stream){stream.getTracks().forEach(function(t){t.stop()})}
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
       msg('Camera is not available here. Open this page in Safari over https.');return Promise.resolve(false)}
-    return navigator.mediaDevices.getUserMedia({
-      video:{facingMode:facing,width:{ideal:1080},height:{ideal:1920},aspectRatio:{ideal:9/16},frameRate:{ideal:30}},
-      audio:{echoCancellation:true,noiseSuppression:true}
-    }).then(function(s){
-      stream=s;cam.srcObject=s;cam.classList.toggle('mirror',facing==='user');msg('');return true;
-    }).catch(function(){
-      msg('Camera or microphone access was blocked. Allow both in Safari settings, then reload.');return false;
-    });
+    var tries=[
+      {width:{exact:1080},height:{exact:1920}},
+      {width:{exact:720},height:{exact:1280}},
+      {width:{ideal:720},height:{ideal:1280},aspectRatio:{ideal:9/16}},
+      {}
+    ];
+    var audio={echoCancellation:true,noiseSuppression:true};
+    function attempt(i){
+      var v=tries[i];v.facingMode=facing;v.frameRate={ideal:30};
+      return navigator.mediaDevices.getUserMedia({video:v,audio:audio}).then(function(s){
+        stream=s;cam.srcObject=s;cam.classList.toggle('mirror',facing==='user');
+        cam.onloadedmetadata=function(){
+          var vw=cam.videoWidth,vh=cam.videoHeight;
+          msg('Camera: '+vw+'\u00d7'+vh+(vw>vh?' (landscape, will be cropped)':''));
+          setTimeout(function(){if(!recording)msg('')},6000);
+        };
+        return true;
+      }).catch(function(err){
+        if(i<tries.length-1&&err&&err.name!=='NotAllowedError')return attempt(i+1);
+        msg('Camera or microphone access was blocked. Allow both in Safari settings, then reload.');return false;
+      });
+    }
+    return attempt(0);
   }
 
   // ---- recording ----

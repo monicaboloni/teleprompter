@@ -9,6 +9,7 @@
 <style>
 :root{
   --bg:#000; --fg:#fff; --dim:rgba(255,255,255,.32); --bar:#1c1c1e; --btn:#2c2c2e; --on:#7cc4ff; --onfg:#000;
+  --sec:#ffd60a;
   color-scheme:dark; box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
@@ -20,12 +21,15 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
 #flip{position:absolute;inset:0}
 #text{position:absolute;left:0;right:0;top:0;padding:0 64px;font-weight:700;line-height:1.45;
   white-space:pre-wrap;word-wrap:break-word;will-change:transform}
+#text .sec{color:var(--sec)}
 #text .done{color:var(--dim)}
+#text .sec.done{color:var(--sec);opacity:.35}
 #mark{position:absolute;left:14px;width:0;height:0;border-left:22px solid var(--on);
   border-top:14px solid transparent;border-bottom:14px solid transparent}
 #bar{background:var(--bar);padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center}
 #bar label{display:flex;align-items:center;gap:8px;font-size:16px}
 #bar input[type=range]{width:150px}
+#bar input[type=color]{width:44px;height:44px;padding:0;border:0;background:none;border-radius:10px}
 button{font:inherit;font-size:17px;font-weight:700;color:var(--fg);background:var(--btn);border:0;border-radius:10px;
   min-height:44px;min-width:44px;padding:0 16px}
 button.on{background:var(--on);color:var(--onfg)}
@@ -57,40 +61,58 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     </div>
     <label id="speedWrap">Speed <input id="speed" type="range" min="10" max="200" value="45"></label>
     <label>Size <input id="size" type="range" min="36" max="140" value="72"></label>
+    <label>Section color <input id="secColor" type="color" value="#ffd60a"></label>
     <button id="mirror">Mirror</button>
     <button id="edit">Edit script</button>
   </div>
 </div>
 
 <div id="editor">
-  <p>Paste or type your script, then tap Done.</p>
+  <p>Paste or type your script, then tap Done. When you paste from Docs, Word, Pages or Notes, bold lines in a larger font become section titles (shown as a line starting with "#"). You can also start any line with "#" yourself, like #Welcome.</p>
   <textarea id="script" spellcheck="false"></textarea>
   <button id="done">Done</button>
 </div>
 
 <script>
 (function(){
-  var DEFAULT = "Welcome to your teleprompter. Tap Edit script to paste in your own text.\n\nChoose Auto scroll to have the text move at a steady speed, or Voice follow to have it keep pace with you as you read out loud.\n\nTap the text to play or pause. Drag to move to a different spot.";
+  var DEFAULT = "# Welcome\nWelcome to your teleprompter. Tap Edit script to paste in your own text.\n\n# Scrolling\nChoose Auto scroll to have the text move at a steady speed, or Voice follow to have it keep pace with you as you read out loud.\n\n# Controls\nTap the text to play or pause. Drag to move to a different spot.";
   var $ = function(id){return document.getElementById(id)};
   var stage=$('stage'), textEl=$('text'), mark=$('mark'), msgEl=$('msg');
   var mode='auto', running=false, offset=0, wordIndex=0, marked=0, lastKey='';
   var speed=45, words=[], rec=null, wake=null;
 
-  function load(){ try{ return localStorage.getItem('tp_script') }catch(e){ return null } }
-  function save(s){ try{ localStorage.setItem('tp_script', s) }catch(e){} }
-  var script = load() || DEFAULT;
+  function load(k){ try{ return localStorage.getItem(k) }catch(e){ return null } }
+  function save(k,s){ try{ localStorage.setItem(k, s) }catch(e){} }
+  var script = load('tp_script') || DEFAULT;
 
   function norm(s){ return s.toLowerCase().replace(/[^\p{L}\p{N}]/gu,'') }
   function msg(t){ msgEl.textContent=t||''; msgEl.style.display=t?'block':'none' }
 
+  // ---- section color ----
+  var savedSec = load('tp_sec');
+  if(savedSec && /^#[0-9a-f]{6}$/i.test(savedSec)){
+    document.documentElement.style.setProperty('--sec', savedSec); $('secColor').value=savedSec;
+  }
+  $('secColor').oninput=function(e){
+    document.documentElement.style.setProperty('--sec', e.target.value); save('tp_sec', e.target.value);
+  };
+
+  // ---- render: lines starting with "# " are section titles ----
   function render(){
     textEl.textContent=''; words=[];
-    var re=/(\s+)|(\S+)/g, m;
-    while((m=re.exec(script))){
-      if(m[1]){ textEl.appendChild(document.createTextNode(m[1])); continue; }
-      var sp=document.createElement('span'); sp.textContent=m[2];
-      textEl.appendChild(sp);
-      var n=norm(m[2]); if(n) words.push({el:sp,n:n});
+    var lines=script.split(/\r?\n/);
+    for(var li=0; li<lines.length; li++){
+      var line=lines[li], sec=/^\s*#/.test(line);
+      if(sec) line=line.replace(/^\s*#+\s*/,'');
+      var re=/(\s+)|(\S+)/g, m;
+      while((m=re.exec(line))){
+        if(m[1]){ textEl.appendChild(document.createTextNode(m[1])); continue; }
+        var sp=document.createElement('span'); sp.textContent=m[2];
+        if(sec) sp.className='sec';
+        textEl.appendChild(sp);
+        var n=norm(m[2]); if(n) words.push({el:sp,n:n});
+      }
+      if(li<lines.length-1) textEl.appendChild(document.createTextNode('\n'));
     }
     wordIndex=0; marked=0; lastKey=''; offset=0; place();
   }
@@ -108,6 +130,89 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     else { for(i=wordIndex;i<marked;i++) words[i].el.classList.remove('done'); }
     marked=wordIndex;
   }
+
+  // ---- paste: detect bold + larger text as section titles ----
+  var BLOCK=/^(P|DIV|H[1-6]|LI|UL|OL|TR|BLOCKQUOTE|PRE|TABLE|SECTION|ARTICLE|HEADER|FOOTER)$/;
+  var SKIP=/^(SCRIPT|STYLE|HEAD|TITLE|META|LINK)$/;
+  function pxOf(v){
+    var m=/([\d.]+)\s*(pt|px|em|rem|%)?/i.exec(v||''); if(!m) return null;
+    var n=parseFloat(m[1]), u=(m[2]||'px').toLowerCase();
+    if(u==='pt') return n*4/3;
+    if(u==='em'||u==='rem') return n*16;
+    if(u==='%') return n*0.16;
+    return n;
+  }
+  function weightOf(el){
+    var fw=(el.style&&el.style.fontWeight)||'';
+    if(fw){
+      if(fw==='bold'||fw==='bolder') return true;
+      var n=parseInt(fw,10); return !isNaN(n)&&n>=600;
+    }
+    var t=el.tagName;
+    if(t==='B'||t==='STRONG'||t==='TH'||/^H[1-6]$/.test(t)) return true;
+    return null;
+  }
+  function htmlToScript(html){
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var segs=[];
+    function walk(n,bold,size,hd){
+      if(n.nodeType===3){
+        var t=n.nodeValue.replace(/\s+/g,' ');
+        if(t) segs.push({t:t,b:bold,s:size,h:hd});
+        return;
+      }
+      if(n.nodeType!==1) return;
+      var tag=n.tagName;
+      if(SKIP.test(tag)) return;
+      if(tag==='BR'){ segs.push({br:1}); return; }
+      var w=weightOf(n); if(w!==null) bold=w;
+      var s=pxOf(n.style&&n.style.fontSize); if(s) size=s;
+      if(/^H[1-6]$/.test(tag)) hd=true;
+      var blk=BLOCK.test(tag);
+      if(blk) segs.push({blk:1});
+      for(var c=n.firstChild;c;c=c.nextSibling) walk(c,bold,size,hd);
+      if(blk) segs.push({blk:1});
+    }
+    walk(doc.body,false,null,false);
+
+    // group into lines
+    var lines=[], cur=[];
+    segs.forEach(function(s){
+      if(s.blk){ if(cur.length){ lines.push(cur); cur=[]; } }
+      else if(s.br){ lines.push(cur); cur=[]; }
+      else {
+        if(!cur.length){ s.t=s.t.replace(/^\s+/,''); if(!s.t) return; }
+        cur.push(s);
+      }
+    });
+    if(cur.length) lines.push(cur);
+
+    // body size = the size most characters use
+    var cnt={};
+    segs.forEach(function(s){
+      if(s.t&&s.t.trim()){ var k=Math.round(s.s||16); cnt[k]=(cnt[k]||0)+s.t.trim().length; }
+    });
+    var base=16, best=0;
+    for(var k in cnt){ if(cnt[k]>best){ best=cnt[k]; base=+k; } }
+
+    return lines.map(function(L){
+      var text=L.map(function(s){return s.t}).join('').replace(/\s+/g,' ').trim();
+      if(!text) return '';
+      var real=L.filter(function(s){return s.t.trim()});
+      // a heading tag, or ALL text on the line bold AND clearly bigger than body text
+      var head=real.some(function(s){return s.h}) ||
+               real.every(function(s){return s.b && (s.s||base)>base*1.1});
+      return head?'# '+text:text;
+    }).join('\n');
+  }
+  $('script').addEventListener('paste',function(e){
+    var cd=e.clipboardData; if(!cd) return;
+    var html=cd.getData('text/html'); if(!html) return;   // plain text paste: leave as is
+    var out=''; try{ out=htmlToScript(html) }catch(err){ out='' }
+    if(!out.trim()) return;
+    e.preventDefault();
+    this.setRangeText(out,this.selectionStart,this.selectionEnd,'end');
+  });
 
   // ---- voice ----
   function handle(spoken){
@@ -206,7 +311,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   };
   $('edit').onclick=function(){ pause(); $('script').value=script; $('editor').style.display='flex' };
   $('done').onclick=function(){
-    script=$('script').value.trim()||DEFAULT; save(script);
+    script=$('script').value.trim()||DEFAULT; save('tp_script',script);
     $('editor').style.display='none'; render();
   };
   window.addEventListener('resize',function(){ setSize(+$('size').value); place() });

@@ -26,6 +26,15 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
 #text .sec.done{color:var(--sec);opacity:.35}
 #mark{position:absolute;left:14px;width:0;height:0;border-left:22px solid var(--on);
   border-top:14px solid transparent;border-bottom:14px solid transparent}
+
+/* iPad view: a bordered reading window, centered just under the camera lens.
+   Sized from the iPad Air 4 (1180x820 CSS px landscape, 132 CSS px/inch = ~5.2 px/mm)
+   and the Sony ZV-1F body (105.5 x 60 mm = ~548 x 312 px). */
+#stage.ipad #flip{inset:auto;left:50%;top:var(--ft,20px);width:var(--fw,560px);height:var(--fh,340px);
+  margin-left:calc(var(--fw,560px) / -2);box-sizing:border-box;border:3px solid var(--on);border-radius:16px;overflow:hidden}
+#stage.ipad #text{padding:0 36px}
+#stage.ipad #mark{left:8px}
+
 #bar{background:var(--bar);padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center}
 #bar label{display:flex;align-items:center;gap:8px;font-size:16px}
 #bar input[type=range]{width:150px}
@@ -38,6 +47,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .seg{display:flex;gap:2px}
 .seg button:first-child{border-radius:10px 0 0 10px}
 .seg button:last-child{border-radius:0 10px 10px 0}
+#ipadCtl{display:none;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center;width:100%}
+#ipadCtl input[type=range]{width:120px}
 #msg{width:100%;text-align:center;color:#ff9f0a;font-size:15px;margin:0;display:none}
 #editor{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;gap:12px;padding:20px;
   padding-top:max(20px,env(safe-area-inset-top,0px));padding-bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:5}
@@ -59,11 +70,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       <button id="m-auto" class="on">Auto scroll</button>
       <button id="m-voice">Voice follow</button>
     </div>
+    <div class="seg" role="group" aria-label="View">
+      <button id="v-full" class="on">Full screen</button>
+      <button id="v-ipad">iPad</button>
+    </div>
     <label id="speedWrap">Speed <input id="speed" type="range" min="10" max="200" value="45"></label>
     <label>Size <input id="size" type="range" min="36" max="140" value="72"></label>
     <label>Section color <input id="secColor" type="color" value="#ffd60a"></label>
     <button id="mirror">Mirror</button>
     <button id="edit">Edit script</button>
+    <div id="ipadCtl">
+      <label>Frame width <input id="fw" type="range" min="360" max="1000" step="10" value="560"></label>
+      <label>Frame height <input id="fh" type="range" min="160" max="700" step="10" value="340"></label>
+      <label>Frame position <input id="ft" type="range" min="0" max="400" step="5" value="20"></label>
+    </div>
   </div>
 </div>
 
@@ -77,13 +97,19 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 (function(){
   var DEFAULT = "# Welcome\nWelcome to your teleprompter. Tap Edit script to paste in your own text.\n\n# Scrolling\nChoose Auto scroll to have the text move at a steady speed, or Voice follow to have it keep pace with you as you read out loud.\n\n# Controls\nTap the text to play or pause. Drag to move to a different spot.";
   var $ = function(id){return document.getElementById(id)};
-  var stage=$('stage'), textEl=$('text'), mark=$('mark'), msgEl=$('msg');
+  var stage=$('stage'), flip=$('flip'), textEl=$('text'), mark=$('mark'), msgEl=$('msg');
   var mode='auto', running=false, offset=0, wordIndex=0, marked=0, lastKey='';
   var speed=45, words=[], rec=null, wake=null;
 
   function load(k){ try{ return localStorage.getItem(k) }catch(e){ return null } }
   function save(k,s){ try{ localStorage.setItem(k, s) }catch(e){} }
+  function num(k,d){ var v=parseFloat(load(k)); return isNaN(v)?d:v }
   var script = load('tp_script') || DEFAULT;
+
+  // ---- view: "full" (whole screen) or "ipad" (bordered window near the lens) ----
+  var view = load('tp_view')==='ipad' ? 'ipad' : 'full';
+  var sizes = { full:num('tp_sz_full',72), ipad:num('tp_sz_ipad',48) };
+  var F = { w:num('tp_fw',560), h:num('tp_fh',340), t:num('tp_ft',20) };
 
   function norm(s){ return s.toLowerCase().replace(/[^\p{L}\p{N}]/gu,'') }
   function msg(t){ msgEl.textContent=t||''; msgEl.style.display=t?'block':'none' }
@@ -116,13 +142,36 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     }
     wordIndex=0; marked=0; lastKey=''; offset=0; place();
   }
-  function readLine(){ return stage.clientHeight*0.35 }
+  // reading line: the spot the eyes rest on. In iPad view it sits near the top of the
+  // frame, close to the lens.
+  function readLine(){ return flip.clientHeight*(view==='ipad'?0.28:0.35) }
   function setSize(px){
     textEl.style.fontSize=px+'px';
     mark.style.top=(readLine()+px*0.72-14)+'px';
   }
   function place(){ textEl.style.transform='translate3d(0,'+(readLine()-offset)+'px,0)' }
   function maxOffset(){ return textEl.offsetHeight }
+
+  // position the iPad frame (clamped to the screen), then refit text size and reading line
+  function applyView(){
+    var sh=stage.clientHeight, sw=stage.clientWidth;
+    var t=Math.min(F.t, Math.max(0, sh-140));
+    var h=Math.max(100, Math.min(F.h, sh-t-4));
+    var w=Math.min(F.w, sw-8);
+    stage.style.setProperty('--ft', t+'px');
+    stage.style.setProperty('--fh', h+'px');
+    stage.style.setProperty('--fw', w+'px');
+    stage.classList.toggle('ipad', view==='ipad');
+    setSize(sizes[view]); place();
+  }
+  // re-flow the text but stay on the same word
+  function relayout(fn){
+    var i=0; while(i<words.length && words[i].el.offsetTop<offset) i++;
+    fn();
+    var w=words[i];
+    offset = w ? w.el.offsetTop : Math.min(offset, maxOffset());
+    place();
+  }
 
   function markDone(){
     var i;
@@ -302,10 +351,29 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     $('speedWrap').style.display=m==='auto'?'flex':'none';
     if(m==='auto'){ for(var i=0;i<words.length;i++) words[i].el.classList.remove('done'); }
   }
+  function setView(v){
+    pause(); view=v; save('tp_view',v);
+    $('v-full').classList.toggle('on',v==='full'); $('v-ipad').classList.toggle('on',v==='ipad');
+    $('ipadCtl').style.display=v==='ipad'?'flex':'none';
+    $('size').value=sizes[v];
+    applyView(); restart();
+  }
   $('play').onclick=toggle; $('restart').onclick=restart;
   $('m-auto').onclick=function(){setMode('auto')}; $('m-voice').onclick=function(){setMode('voice')};
+  $('v-full').onclick=function(){setView('full')}; $('v-ipad').onclick=function(){setView('ipad')};
   $('speed').oninput=function(e){ speed=+e.target.value };
-  $('size').oninput=function(e){ setSize(+e.target.value); place() };
+  $('size').oninput=function(e){
+    sizes[view]=+e.target.value; save('tp_sz_'+view, sizes[view]);
+    setSize(sizes[view]); place();
+  };
+  function frameSlider(id,key,storeKey){
+    $(id).value=F[key];
+    $(id).oninput=function(e){
+      F[key]=+e.target.value; save(storeKey,F[key]);
+      relayout(applyView);
+    };
+  }
+  frameSlider('fw','w','tp_fw'); frameSlider('fh','h','tp_fh'); frameSlider('ft','t','tp_ft');
   $('mirror').onclick=function(){
     var on=this.classList.toggle('on'); $('flip').style.transform=on?'scaleX(-1)':'';
   };
@@ -314,9 +382,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     script=$('script').value.trim()||DEFAULT; save('tp_script',script);
     $('editor').style.display='none'; render();
   };
-  window.addEventListener('resize',function(){ setSize(+$('size').value); place() });
+  window.addEventListener('resize',function(){ applyView() });
 
-  setSize(72); render(); setMode('auto');
+  setView(view); render(); setMode('auto');
 })();
 </script>
 </body>

@@ -80,9 +80,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     <button id="mirror">Mirror</button>
     <button id="edit">Edit script</button>
     <div id="ipadCtl">
-      <label>Frame width <input id="fw" type="range" min="360" max="1000" step="10" value="560"></label>
-      <label>Frame height <input id="fh" type="range" min="160" max="700" step="10" value="340"></label>
-      <label>Frame position <input id="ft" type="range" min="0" max="400" step="5" value="20"></label>
+      <label>Frame width <input id="fw" type="range" min="360" max="1160" step="10" value="880"></label>
+      <label>Frame height <input id="fh" type="range" min="160" max="800" step="10" value="500"></label>
+      <label>Frame position <input id="ft" type="range" min="0" max="400" step="5" value="8"></label>
     </div>
   </div>
 </div>
@@ -108,8 +108,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 
   // ---- view: "full" (whole screen) or "ipad" (bordered window near the lens) ----
   var view = load('tp_view')==='ipad' ? 'ipad' : 'full';
-  var sizes = { full:num('tp_sz_full',72), ipad:num('tp_sz_ipad',48) };
-  var F = { w:num('tp_fw',560), h:num('tp_fh',340), t:num('tp_ft',20) };
+  var sizes = { full:num('tp_sz_full',72), ipad:num('tp_sz_ipad2',64) };
+  var F = { w:num('tp_fw2',880), h:num('tp_fh2',500), t:num('tp_ft2',8) };
 
   function norm(s){ return s.toLowerCase().replace(/[^\p{L}\p{N}]/gu,'') }
   function msg(t){ msgEl.textContent=t||''; msgEl.style.display=t?'block':'none' }
@@ -155,7 +155,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   // position the iPad frame (clamped to the screen), then refit text size and reading line
   function applyView(){
     var sh=stage.clientHeight, sw=stage.clientWidth;
-    var t=Math.min(F.t, Math.max(0, sh-140));
+    var t=Math.min(F.t, Math.max(0, sh-200));
     var h=Math.max(100, Math.min(F.h, sh-t-4));
     var w=Math.min(F.w, sw-8);
     stage.style.setProperty('--ft', t+'px');
@@ -363,7 +363,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   $('v-full').onclick=function(){setView('full')}; $('v-ipad').onclick=function(){setView('ipad')};
   $('speed').oninput=function(e){ speed=+e.target.value };
   $('size').oninput=function(e){
-    sizes[view]=+e.target.value; save('tp_sz_'+view, sizes[view]);
+    sizes[view]=+e.target.value; save(view==='ipad'?'tp_sz_ipad2':'tp_sz_full', sizes[view]);
     setSize(sizes[view]); place();
   };
   function frameSlider(id,key,storeKey){
@@ -373,7 +373,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       relayout(applyView);
     };
   }
-  frameSlider('fw','w','tp_fw'); frameSlider('fh','h','tp_fh'); frameSlider('ft','t','tp_ft');
+  frameSlider('fw','w','tp_fw2'); frameSlider('fh','h','tp_fh2'); frameSlider('ft','t','tp_ft2');
   $('mirror').onclick=function(){
     var on=this.classList.toggle('on'); $('flip').style.transform=on?'scaleX(-1)':'';
   };

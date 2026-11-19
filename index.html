@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Teleprompter</title>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#000; --fg:#fff; --dim:rgba(255,255,255,.32); --bar:#1c1c1e; --btn:#2c2c2e; --on:#7cc4ff; --onfg:#000;
@@ -22,14 +22,12 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
 #text{position:absolute;left:0;right:0;top:0;padding:0 64px;font-weight:700;line-height:1.45;
   white-space:pre-wrap;word-wrap:break-word;will-change:transform}
 #text .sec{color:var(--sec)}
+#text .it{font-style:italic}
 #text .done{color:var(--dim)}
 #text .sec.done{color:var(--sec);opacity:.35}
 #mark{position:absolute;left:14px;width:0;height:0;border-left:22px solid var(--on);
   border-top:14px solid transparent;border-bottom:14px solid transparent}
 
-/* iPad view: a bordered reading window, centered just under the camera lens.
-   Sized from the iPad Air 4 (1180x820 CSS px landscape, 132 CSS px/inch = ~5.2 px/mm)
-   and the Sony ZV-1F body (105.5 x 60 mm = ~548 x 312 px). */
 #stage.ipad #flip{inset:auto;left:50%;top:var(--ft,20px);width:var(--fw,560px);height:var(--fh,340px);
   margin-left:calc(var(--fw,560px) / -2);box-sizing:border-box;border:3px solid var(--on);border-radius:16px;overflow:hidden}
 #stage.ipad #text{padding:0 36px}
@@ -88,14 +86,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 </div>
 
 <div id="editor">
-  <p>Paste or type your script, then tap Done. When you paste from Docs, Word, Pages or Notes, bold lines in a larger font become section titles (shown as a line starting with "#"). You can also start any line with "#" yourself, like #Welcome.</p>
+  <p>Paste or type your script, then tap Done. When you paste from Docs, Word, Pages or Notes, bold lines in a larger font become section titles (shown as a line starting with "#"), and italic words are wrapped in asterisks like *this*. You can also type these yourself: start a line with "#" for a section title, and put *asterisks* around words to italicize them.</p>
   <textarea id="script" spellcheck="false"></textarea>
   <button id="done">Done</button>
 </div>
 
 <script>
 (function(){
-  var DEFAULT = "# Welcome\nWelcome to your teleprompter. Tap Edit script to paste in your own text.\n\n# Scrolling\nChoose Auto scroll to have the text move at a steady speed, or Voice follow to have it keep pace with you as you read out loud.\n\n# Controls\nTap the text to play or pause. Drag to move to a different spot.";
+  var DEFAULT = "# Welcome\nWelcome to your teleprompter. Tap Edit script to paste in your own text.\n\n# Scrolling\nChoose Auto scroll to have the text move at a steady speed, or Voice follow to have it keep pace with you as you read out loud.\n\n# Controls\nTap the text to play or pause. Drag to move to a different spot. Put *asterisks* around words to make them italic.";
   var $ = function(id){return document.getElementById(id)};
   var stage=$('stage'), flip=$('flip'), textEl=$('text'), mark=$('mark'), msgEl=$('msg');
   var mode='auto', running=false, offset=0, wordIndex=0, marked=0, lastKey='';
@@ -106,7 +104,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   function num(k,d){ var v=parseFloat(load(k)); return isNaN(v)?d:v }
   var script = load('tp_script') || DEFAULT;
 
-  // ---- view: "full" (whole screen) or "ipad" (bordered window near the lens) ----
   var view = load('tp_view')==='ipad' ? 'ipad' : 'full';
   var sizes = { full:num('tp_sz_full',72), ipad:num('tp_sz_ipad2',64) };
   var F = { w:num('tp_fw2',880), h:num('tp_fh2',500), t:num('tp_ft2',8) };
@@ -114,7 +111,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   function norm(s){ return s.toLowerCase().replace(/[^\p{L}\p{N}]/gu,'') }
   function msg(t){ msgEl.textContent=t||''; msgEl.style.display=t?'block':'none' }
 
-  // ---- section color ----
   var savedSec = load('tp_sec');
   if(savedSec && /^#[0-9a-f]{6}$/i.test(savedSec)){
     document.documentElement.style.setProperty('--sec', savedSec); $('secColor').value=savedSec;
@@ -123,27 +119,31 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     document.documentElement.style.setProperty('--sec', e.target.value); save('tp_sec', e.target.value);
   };
 
-  // ---- render: lines starting with "# " are section titles ----
+  // ---- render: lines starting with "#" are section titles; *text* is italic ----
   function render(){
     textEl.textContent=''; words=[];
     var lines=script.split(/\r?\n/);
     for(var li=0; li<lines.length; li++){
-      var line=lines[li], sec=/^\s*#/.test(line);
+      var line=lines[li], sec=/^\s*#/.test(line), ital=false;
       if(sec) line=line.replace(/^\s*#+\s*/,'');
       var re=/(\s+)|(\S+)/g, m;
       while((m=re.exec(line))){
         if(m[1]){ textEl.appendChild(document.createTextNode(m[1])); continue; }
-        var sp=document.createElement('span'); sp.textContent=m[2];
-        if(sec) sp.className='sec';
-        textEl.appendChild(sp);
-        var n=norm(m[2]); if(n) words.push({el:sp,n:n});
+        var w=m[2], endI=false;
+        while(w.charAt(0)==='*'){ ital=true; w=w.slice(1); }
+        while(w.length && w.charAt(w.length-1)==='*'){ endI=true; w=w.slice(0,-1); }
+        if(w){
+          var sp=document.createElement('span'); sp.textContent=w;
+          sp.className=(sec?'sec':'')+(ital?' it':'');
+          textEl.appendChild(sp);
+          var n=norm(w); if(n) words.push({el:sp,n:n});
+        }
+        if(endI) ital=false;
       }
       if(li<lines.length-1) textEl.appendChild(document.createTextNode('\n'));
     }
     wordIndex=0; marked=0; lastKey=''; offset=0; place();
   }
-  // reading line: the spot the eyes rest on. In iPad view it sits near the top of the
-  // frame, close to the lens.
   function readLine(){ return flip.clientHeight*(view==='ipad'?0.28:0.35) }
   function setSize(px){
     textEl.style.fontSize=px+'px';
@@ -152,7 +152,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   function place(){ textEl.style.transform='translate3d(0,'+(readLine()-offset)+'px,0)' }
   function maxOffset(){ return textEl.offsetHeight }
 
-  // position the iPad frame (clamped to the screen), then refit text size and reading line
   function applyView(){
     var sh=stage.clientHeight, sw=stage.clientWidth;
     var t=Math.min(F.t, Math.max(0, sh-200));
@@ -164,7 +163,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     stage.classList.toggle('ipad', view==='ipad');
     setSize(sizes[view]); place();
   }
-  // re-flow the text but stay on the same word
   function relayout(fn){
     var i=0; while(i<words.length && words[i].el.offsetTop<offset) i++;
     fn();
@@ -180,7 +178,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     marked=wordIndex;
   }
 
-  // ---- paste: detect bold + larger text as section titles ----
+  // ---- paste: bold + larger text becomes section titles; italics become *text* ----
   var BLOCK=/^(P|DIV|H[1-6]|LI|UL|OL|TR|BLOCKQUOTE|PRE|TABLE|SECTION|ARTICLE|HEADER|FOOTER)$/;
   var SKIP=/^(SCRIPT|STYLE|HEAD|TITLE|META|LINK)$/;
   function pxOf(v){
@@ -201,13 +199,33 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     if(t==='B'||t==='STRONG'||t==='TH'||/^H[1-6]$/.test(t)) return true;
     return null;
   }
+  function italicOf(el){
+    var fs=(el.style&&el.style.fontStyle)||'';
+    if(fs){ return fs==='italic'||fs==='oblique'||/^oblique/.test(fs); }
+    var t=el.tagName;
+    if(t==='I'||t==='EM'||t==='CITE') return true;
+    return null;
+  }
+  // wrap italic runs in *...*, keeping surrounding spaces outside the asterisks
+  function joinLine(L){
+    var runs=[];
+    L.forEach(function(s){
+      var last=runs[runs.length-1];
+      if(last && last.i===!!s.i) last.t+=s.t; else runs.push({t:s.t,i:!!s.i});
+    });
+    return runs.map(function(r){
+      if(!r.i) return r.t;
+      var m=/^(\s*)([\s\S]*?)(\s*)$/.exec(r.t);
+      return m[2]?m[1]+'*'+m[2]+'*'+m[3]:r.t;
+    }).join('').replace(/\s+/g,' ').trim();
+  }
   function htmlToScript(html){
     var doc=new DOMParser().parseFromString(html,'text/html');
     var segs=[];
-    function walk(n,bold,size,hd){
+    function walk(n,bold,size,hd,it){
       if(n.nodeType===3){
         var t=n.nodeValue.replace(/\s+/g,' ');
-        if(t) segs.push({t:t,b:bold,s:size,h:hd});
+        if(t) segs.push({t:t,b:bold,s:size,h:hd,i:it});
         return;
       }
       if(n.nodeType!==1) return;
@@ -215,16 +233,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       if(SKIP.test(tag)) return;
       if(tag==='BR'){ segs.push({br:1}); return; }
       var w=weightOf(n); if(w!==null) bold=w;
+      var iv=italicOf(n); if(iv!==null) it=iv;
       var s=pxOf(n.style&&n.style.fontSize); if(s) size=s;
       if(/^H[1-6]$/.test(tag)) hd=true;
       var blk=BLOCK.test(tag);
       if(blk) segs.push({blk:1});
-      for(var c=n.firstChild;c;c=c.nextSibling) walk(c,bold,size,hd);
+      for(var c=n.firstChild;c;c=c.nextSibling) walk(c,bold,size,hd,it);
       if(blk) segs.push({blk:1});
     }
-    walk(doc.body,false,null,false);
+    walk(doc.body,false,null,false,false);
 
-    // group into lines
     var lines=[], cur=[];
     segs.forEach(function(s){
       if(s.blk){ if(cur.length){ lines.push(cur); cur=[]; } }
@@ -236,7 +254,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     });
     if(cur.length) lines.push(cur);
 
-    // body size = the size most characters use
     var cnt={};
     segs.forEach(function(s){
       if(s.t&&s.t.trim()){ var k=Math.round(s.s||16); cnt[k]=(cnt[k]||0)+s.t.trim().length; }
@@ -245,10 +262,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     for(var k in cnt){ if(cnt[k]>best){ best=cnt[k]; base=+k; } }
 
     return lines.map(function(L){
-      var text=L.map(function(s){return s.t}).join('').replace(/\s+/g,' ').trim();
+      var text=joinLine(L);
       if(!text) return '';
       var real=L.filter(function(s){return s.t.trim()});
-      // a heading tag, or ALL text on the line bold AND clearly bigger than body text
       var head=real.some(function(s){return s.h}) ||
                real.every(function(s){return s.b && (s.s||base)>base*1.1});
       return head?'# '+text:text;
@@ -256,7 +272,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   }
   $('script').addEventListener('paste',function(e){
     var cd=e.clipboardData; if(!cd) return;
-    var html=cd.getData('text/html'); if(!html) return;   // plain text paste: leave as is
+    var html=cd.getData('text/html'); if(!html) return;
     var out=''; try{ out=htmlToScript(html) }catch(err){ out='' }
     if(!out.trim()) return;
     e.preventDefault();

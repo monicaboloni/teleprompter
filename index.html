@@ -5,29 +5,42 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Teleprompter</title>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#000;--fg:#fff;--dim:rgba(255,255,255,.32);--bar:#1c1c1e;--btn:#2c2c2e;--on:#7cc4ff;--onfg:#000;--sec:#ffd60a;
-  color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden}
+:root{
+  --bg:#000; --fg:#fff; --dim:rgba(255,255,255,.32); --bar:#1c1c1e; --btn:#2c2c2e; --on:#7cc4ff; --onfg:#000;
+  --sec:#ffd60a;
+  color-scheme:dark; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-user-select:none;user-select:none;overflow:hidden}
 #app{display:flex;flex-direction:column;height:100%}
 #stage{flex:1;position:relative;overflow:hidden;touch-action:none}
 #flip{position:absolute;inset:0}
-#text{position:absolute;left:0;right:0;top:0;padding:0 64px;font-weight:400;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;will-change:transform}
-#text .b,#text .sec{font-weight:700}
-#text .i{font-style:italic}
+#text{position:absolute;left:0;right:0;top:0;padding:0 64px;font-weight:700;line-height:1.45;
+  white-space:pre-wrap;word-wrap:break-word;will-change:transform}
 #text .sec{color:var(--sec)}
 #text .done{color:var(--dim)}
 #text .sec.done{color:var(--sec);opacity:.35}
-#mark{position:absolute;left:14px;width:0;height:0;border-left:22px solid var(--on);border-top:14px solid transparent;border-bottom:14px solid transparent}
-#stage.ipad #flip{inset:auto;left:50%;top:var(--ft,20px);width:var(--fw,560px);height:var(--fh,340px);margin-left:calc(var(--fw,560px) / -2);box-sizing:border-box;border:3px solid var(--on);border-radius:16px;overflow:hidden}
+#mark{position:absolute;left:14px;width:0;height:0;border-left:22px solid var(--on);
+  border-top:14px solid transparent;border-bottom:14px solid transparent}
+
+/* iPad view: a bordered reading window, centered just under the camera lens.
+   Sized from the iPad Air 4 (1180x820 CSS px landscape, 132 CSS px/inch = ~5.2 px/mm)
+   and the Sony ZV-1F body (105.5 x 60 mm = ~548 x 312 px). */
+#stage.ipad #flip{inset:auto;left:50%;top:var(--ft,20px);width:var(--fw,560px);height:var(--fh,340px);
+  margin-left:calc(var(--fw,560px) / -2);box-sizing:border-box;border:3px solid var(--on);border-radius:16px;overflow:hidden}
 #stage.ipad #text{padding:0 36px}
 #stage.ipad #mark{left:8px}
+
 #bar{background:var(--bar);padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center}
 #bar label{display:flex;align-items:center;gap:8px;font-size:16px}
 #bar input[type=range]{width:150px}
 #bar input[type=color]{width:44px;height:44px;padding:0;border:0;background:none;border-radius:10px}
-button{font:inherit;font-size:17px;font-weight:700;color:var(--fg);background:var(--btn);border:0;border-radius:10px;min-height:44px;min-width:44px;padding:0 16px}
+button{font:inherit;font-size:17px;font-weight:700;color:var(--fg);background:var(--btn);border:0;border-radius:10px;
+  min-height:44px;min-width:44px;padding:0 16px}
 button.on{background:var(--on);color:var(--onfg)}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--on);outline-offset:2px}
 #play{min-width:96px}
@@ -37,16 +50,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 #ipadCtl{display:none;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center;width:100%}
 #ipadCtl input[type=range]{width:120px}
 #msg{width:100%;text-align:center;color:#ff9f0a;font-size:15px;margin:0;display:none}
-#editor{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;gap:12px;padding:20px;padding-top:max(20px,env(safe-area-inset-top,0px));padding-bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:5}
-#editor textarea{flex:1;font:inherit;font-size:22px;line-height:1.5;background:#111;color:var(--fg);border:1px solid #333;border-radius:10px;padding:16px;-webkit-user-select:text;user-select:text}
+#editor{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;gap:12px;padding:20px;
+  padding-top:max(20px,env(safe-area-inset-top,0px));padding-bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:5}
+#editor textarea{flex:1;font:inherit;font-size:22px;line-height:1.5;background:#111;color:var(--fg);
+  border:1px solid #333;border-radius:10px;padding:16px;-webkit-user-select:text;user-select:text}
 #editor p{margin:0;font-size:16px;opacity:.7}
-#tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-#st{font-size:15px;opacity:.85}
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="stage"><div id="flip"><div id="text"></div><div id="mark"></div></div></div>
+  <div id="stage">
+    <div id="flip"><div id="text"></div><div id="mark"></div></div>
+  </div>
   <div id="bar">
     <p id="msg"></p>
     <button id="play">Play</button>
@@ -73,44 +88,25 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 </div>
 
 <div id="editor">
-  <p>Paste from Docs, Word, Pages or Notes, or upload a Word or PDF file. Headings become lines starting with "#", bold becomes **bold**, italic becomes *italic*. You can type these marks yourself too.</p>
-  <div id="tools">
-    <button id="upload">Upload Word / PDF</button>
-    <button id="clear">Clear saved script</button>
-    <span id="st"></span>
-    <input id="file" type="file" accept=".docx,.pdf,.txt,.md" hidden>
-  </div>
-  <details id="gh"><summary>Sync with GitHub (optional, to share the script between devices)</summary>
-    <p>Saves the script as a file in your repo. Use a fine-grained token limited to that one repo with Contents: read and write. Enter these once on each device. If the repo is public, the script is public too.</p>
-    <div id="tools">
-      <input id="ghRepo" placeholder="owner/repo" size="22">
-      <input id="ghPath" placeholder="teleprompter-script.json" size="24">
-      <input id="ghTok" type="password" placeholder="GitHub token" size="24">
-      <button id="ghSave">Save sync settings</button>
-    </div>
-  </details>
+  <p>Paste or type your script, then tap Done. When you paste from Docs, Word, Pages or Notes, bold lines in a larger font become section titles (shown as a line starting with "#"). You can also start any line with "#" yourself, like #Welcome.</p>
   <textarea id="script" spellcheck="false"></textarea>
   <button id="done">Done</button>
 </div>
 
 <script>
 (function(){
-  var DEFAULT = "# Welcome\nWelcome to your **teleprompter**. Tap Edit script to paste in your own text, or upload a Word or PDF file.\n\n# Scrolling\nChoose Auto scroll to have the text move at a steady speed, or Voice follow to have it keep pace with you as you *read out loud*.\n\n# Controls\nTap the text to play or pause. Drag to move to a different spot.";
-  var MAMMOTH="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js";
-  var PDFJS="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-  var PDFW="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  var DEFAULT = "# Welcome\nWelcome to your teleprompter. Tap Edit script to paste in your own text.\n\n# Scrolling\nChoose Auto scroll to have the text move at a steady speed, or Voice follow to have it keep pace with you as you read out loud.\n\n# Controls\nTap the text to play or pause. Drag to move to a different spot.";
   var $ = function(id){return document.getElementById(id)};
-  var stage=$('stage'), flip=$('flip'), textEl=$('text'), mark=$('mark'), msgEl=$('msg'), stEl=$('st');
+  var stage=$('stage'), flip=$('flip'), textEl=$('text'), mark=$('mark'), msgEl=$('msg');
   var mode='auto', running=false, offset=0, wordIndex=0, marked=0, lastKey='';
   var speed=45, words=[], rec=null, wake=null;
 
   function load(k){ try{ return localStorage.getItem(k) }catch(e){ return null } }
   function save(k,s){ try{ localStorage.setItem(k, s) }catch(e){} }
-  function drop(k){ try{ localStorage.removeItem(k) }catch(e){} }
   function num(k,d){ var v=parseFloat(load(k)); return isNaN(v)?d:v }
   var script = load('tp_script') || DEFAULT;
-  var fileName = load('tp_name') || '';
 
+  // ---- view: "full" (whole screen) or "ipad" (bordered window near the lens) ----
   var view = load('tp_view')==='ipad' ? 'ipad' : 'full';
   var sizes = { full:num('tp_sz_full',72), ipad:num('tp_sz_ipad2',64) };
   var F = { w:num('tp_fw2',880), h:num('tp_fh2',500), t:num('tp_ft2',8) };
@@ -118,6 +114,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   function norm(s){ return s.toLowerCase().replace(/[^\p{L}\p{N}]/gu,'') }
   function msg(t){ msgEl.textContent=t||''; msgEl.style.display=t?'block':'none' }
 
+  // ---- section color ----
   var savedSec = load('tp_sec');
   if(savedSec && /^#[0-9a-f]{6}$/i.test(savedSec)){
     document.documentElement.style.setProperty('--sec', savedSec); $('secColor').value=savedSec;
@@ -126,32 +123,27 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     document.documentElement.style.setProperty('--sec', e.target.value); save('tp_sec', e.target.value);
   };
 
-  // ---- render: "# " = section title, **bold**, *italic*, \* = literal asterisk ----
+  // ---- render: lines starting with "# " are section titles ----
   function render(){
     textEl.textContent=''; words=[];
     var lines=script.split(/\r?\n/);
     for(var li=0; li<lines.length; li++){
-      var line=lines[li], sec=/^\s*#/.test(line), b=false, it=false;
+      var line=lines[li], sec=/^\s*#/.test(line);
       if(sec) line=line.replace(/^\s*#+\s*/,'');
-      var parts=line.split(/(\\\*|\*\*|\*)/);
-      for(var pi=0; pi<parts.length; pi++){
-        var p=parts[pi];
-        if(p==='**'){ b=!b; continue; }
-        if(p==='*'){ it=!it; continue; }
-        if(p==='\\*') p='*';
-        var re=/(\s+)|(\S+)/g, m;
-        while((m=re.exec(p))){
-          if(m[1]){ textEl.appendChild(document.createTextNode(m[1])); continue; }
-          var sp=document.createElement('span'); sp.textContent=m[2];
-          sp.className=sec?'sec':((b?'b ':'')+(it?'i':'')).trim();
-          textEl.appendChild(sp);
-          var n=norm(m[2]); if(n) words.push({el:sp,n:n});
-        }
+      var re=/(\s+)|(\S+)/g, m;
+      while((m=re.exec(line))){
+        if(m[1]){ textEl.appendChild(document.createTextNode(m[1])); continue; }
+        var sp=document.createElement('span'); sp.textContent=m[2];
+        if(sec) sp.className='sec';
+        textEl.appendChild(sp);
+        var n=norm(m[2]); if(n) words.push({el:sp,n:n});
       }
       if(li<lines.length-1) textEl.appendChild(document.createTextNode('\n'));
     }
     wordIndex=0; marked=0; lastKey=''; offset=0; place();
   }
+  // reading line: the spot the eyes rest on. In iPad view it sits near the top of the
+  // frame, close to the lens.
   function readLine(){ return flip.clientHeight*(view==='ipad'?0.28:0.35) }
   function setSize(px){
     textEl.style.fontSize=px+'px';
@@ -160,6 +152,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   function place(){ textEl.style.transform='translate3d(0,'+(readLine()-offset)+'px,0)' }
   function maxOffset(){ return textEl.offsetHeight }
 
+  // position the iPad frame (clamped to the screen), then refit text size and reading line
   function applyView(){
     var sh=stage.clientHeight, sw=stage.clientWidth;
     var t=Math.min(F.t, Math.max(0, sh-200));
@@ -171,6 +164,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     stage.classList.toggle('ipad', view==='ipad');
     setSize(sizes[view]); place();
   }
+  // re-flow the text but stay on the same word
   function relayout(fn){
     var i=0; while(i<words.length && words[i].el.offsetTop<offset) i++;
     fn();
@@ -178,6 +172,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     offset = w ? w.el.offsetTop : Math.min(offset, maxOffset());
     place();
   }
+
   function markDone(){
     var i;
     if(wordIndex>marked){ for(i=marked;i<wordIndex;i++) words[i].el.classList.add('done'); }
@@ -185,23 +180,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     marked=wordIndex;
   }
 
-  // ---- formatting -> script markup ----
-  // L = list of segments {t:text, b:bold, i:italic}
-  function fmt(L){
-    var o='', b=false, i=false;
-    L.forEach(function(s){
-      if(!s.t) return;
-      if(!s.t.trim()){ o+=' '; return; }
-      var sb=!!s.b, si=!!s.i;
-      if(sb!==b){ o+='**'; b=sb; }
-      if(si!==i){ o+='*'; i=si; }
-      o+=s.t.replace(/\*/g,'\\*');
-    });
-    if(b) o+='**'; if(i) o+='*';
-    return o.replace(/ {2,}/g,' ').trim();
-  }
-  function plain(L){ return L.map(function(s){return s.t}).join('').replace(/\s+/g,' ').trim() }
-
+  // ---- paste: detect bold + larger text as section titles ----
   var BLOCK=/^(P|DIV|H[1-6]|LI|UL|OL|TR|BLOCKQUOTE|PRE|TABLE|SECTION|ARTICLE|HEADER|FOOTER)$/;
   var SKIP=/^(SCRIPT|STYLE|HEAD|TITLE|META|LINK)$/;
   function pxOf(v){
@@ -222,19 +201,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     if(t==='B'||t==='STRONG'||t==='TH'||/^H[1-6]$/.test(t)) return true;
     return null;
   }
-  function italOf(el){
-    var fs=(el.style&&el.style.fontStyle)||'';
-    if(fs) return /italic|oblique/.test(fs);
-    return (el.tagName==='I'||el.tagName==='EM')?true:null;
-  }
-  // opts.docx: Word files lose font sizes, so a short all-bold line also counts as a heading
-  function htmlToScript(html, opts){
-    opts=opts||{};
-    var doc=new DOMParser().parseFromString(html,'text/html'), segs=[];
-    function walk(n,bold,ital,size,hd){
+  function htmlToScript(html){
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var segs=[];
+    function walk(n,bold,size,hd){
       if(n.nodeType===3){
         var t=n.nodeValue.replace(/\s+/g,' ');
-        if(t) segs.push({t:t,b:bold,i:ital,s:size,h:hd});
+        if(t) segs.push({t:t,b:bold,s:size,h:hd});
         return;
       }
       if(n.nodeType!==1) return;
@@ -242,15 +215,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       if(SKIP.test(tag)) return;
       if(tag==='BR'){ segs.push({br:1}); return; }
       var w=weightOf(n); if(w!==null) bold=w;
-      var it=italOf(n); if(it!==null) ital=it;
       var s=pxOf(n.style&&n.style.fontSize); if(s) size=s;
       if(/^H[1-6]$/.test(tag)) hd=true;
       var blk=BLOCK.test(tag);
       if(blk) segs.push({blk:1});
-      for(var c=n.firstChild;c;c=c.nextSibling) walk(c,bold,ital,size,hd);
+      for(var c=n.firstChild;c;c=c.nextSibling) walk(c,bold,size,hd);
       if(blk) segs.push({blk:1});
     }
-    walk(doc.body,false,false,null,false);
+    walk(doc.body,false,null,false);
+
+    // group into lines
     var lines=[], cur=[];
     segs.forEach(function(s){
       if(s.blk){ if(cur.length){ lines.push(cur); cur=[]; } }
@@ -261,176 +235,33 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       }
     });
     if(cur.length) lines.push(cur);
+
+    // body size = the size most characters use
     var cnt={};
     segs.forEach(function(s){
       if(s.t&&s.t.trim()){ var k=Math.round(s.s||16); cnt[k]=(cnt[k]||0)+s.t.trim().length; }
     });
     var base=16, best=0;
     for(var k in cnt){ if(cnt[k]>best){ best=cnt[k]; base=+k; } }
-    var out=lines.map(function(L){
-      var text=plain(L); if(!text) return '';
+
+    return lines.map(function(L){
+      var text=L.map(function(s){return s.t}).join('').replace(/\s+/g,' ').trim();
+      if(!text) return '';
       var real=L.filter(function(s){return s.t.trim()});
+      // a heading tag, or ALL text on the line bold AND clearly bigger than body text
       var head=real.some(function(s){return s.h}) ||
-               real.every(function(s){return s.b && (s.s||base)>base*1.1}) ||
-               (opts.docx && text.length<80 && !/[.!?,;:]$/.test(text) && real.every(function(s){return s.b}));
-      return head?'# '+text:fmt(L);
-    });
-    return opts.docx ? out.filter(Boolean).join('\n\n') : out.join('\n');
+               real.every(function(s){return s.b && (s.s||base)>base*1.1});
+      return head?'# '+text:text;
+    }).join('\n');
   }
   $('script').addEventListener('paste',function(e){
     var cd=e.clipboardData; if(!cd) return;
-    var html=cd.getData('text/html'); if(!html) return;
+    var html=cd.getData('text/html'); if(!html) return;   // plain text paste: leave as is
     var out=''; try{ out=htmlToScript(html) }catch(err){ out='' }
     if(!out.trim()) return;
     e.preventDefault();
     this.setRangeText(out,this.selectionStart,this.selectionEnd,'end');
   });
-
-  // ---- file import ----
-  function loadScript(u){
-    return new Promise(function(res,rej){
-      var s=document.createElement('script'); s.src=u; s.onload=res; s.onerror=function(){ rej(new Error('Could not load a helper library')) };
-      document.head.appendChild(s);
-    });
-  }
-  async function docxToScript(buf){
-    if(!window.mammoth) await loadScript(MAMMOTH);
-    var r=await window.mammoth.convertToHtml({arrayBuffer:buf});
-    return htmlToScript(r.value,{docx:true});
-  }
-  async function pdfToScript(buf){
-    if(!window.pdfjsLib) await loadScript(PDFJS);
-    var P=window.pdfjsLib; P.GlobalWorkerOptions.workerSrc=PDFW;
-    var pdf=await P.getDocument({data:buf}).promise, lines=[], cnt={};
-    for(var pn=1;pn<=pdf.numPages;pn++){
-      var pg=await pdf.getPage(pn), tc=await pg.getTextContent(), fm={}, first=true, cur=null;
-      try{ await pg.getOperatorList() }catch(e){}
-      tc.items.forEach(function(it){
-        if(!it.str) return;
-        var f=fm[it.fontName];
-        if(!f){
-          var nm=''; try{ nm=pg.commonObjs.get(it.fontName).name||'' }catch(e){}
-          f=fm[it.fontName]={b:/bold|black|heavy|semibold|demi/i.test(nm), i:/italic|oblique/i.test(nm)};
-        }
-        var tr=it.transform, sz=Math.hypot(tr[2],tr[3])||Math.abs(tr[3])||12, y=tr[5], x=tr[4];
-        if(!cur || Math.abs(y-cur.y)>sz*0.5){
-          cur={y:y,s:sz,segs:[],nb:first,lx:null}; first=false; lines.push(cur);
-        }
-        var t=it.str;
-        if(cur.lx!==null && x-cur.lx>sz*0.2 && !/^\s/.test(t) && !/\s$/.test(cur.segs[cur.segs.length-1].t)) t=' '+t;
-        cur.lx=x+it.width; if(sz>cur.s) cur.s=sz;
-        cur.segs.push({t:t,b:f.b,i:f.i});
-        if(t.trim()){ var k=Math.round(sz); cnt[k]=(cnt[k]||0)+t.trim().length; }
-      });
-    }
-    var base=12, best=0; for(var k in cnt){ if(cnt[k]>best){ best=cnt[k]; base=+k; } }
-    var out=[], para=[], prevY=null;
-    function flush(){ if(para.length){ var s=fmt(para); if(s) out.push(s); para=[]; } }
-    lines.forEach(function(L){
-      var real=L.segs.filter(function(s){return s.t.trim()}); if(!real.length) return;
-      var head=L.s>base*1.3 || (L.s>base*1.1 && real.every(function(s){return s.b}));
-      if(head){ flush(); out.push('# '+plain(L.segs)); prevY=null; return; }
-      if(L.nb || prevY===null || prevY-L.y>L.s*1.7) flush();
-      if(para.length) para.push({t:' '});
-      para=para.concat(L.segs); prevY=L.y;
-    });
-    flush();
-    return out.join('\n\n');
-  }
-  function setSt(t){ stEl.textContent=t }
-  function stateText(){
-    return (fileName?('Saved: '+fileName+'. '):'Saved. ')+(ghCfg()?'Synced to GitHub.':'Stored on this device only. Use GitHub sync below to share it with your iPad.');
-  }
-  $('upload').onclick=function(){ $('file').click() };
-  $('file').onchange=async function(){
-    var f=this.files[0]; this.value=''; if(!f) return;
-    setSt('Reading '+f.name+'…');
-    try{
-      var n=f.name.toLowerCase(), out;
-      if(/\.docx$/.test(n)) out=await docxToScript(await f.arrayBuffer());
-      else if(/\.pdf$/.test(n)) out=await pdfToScript(await f.arrayBuffer());
-      else if(/\.(txt|md)$/.test(n)) out=await f.text();
-      else { setSt('Please choose a .docx, .pdf or .txt file. (Old .doc files: save as .docx first.)'); return; }
-      if(!out||!out.trim()){ setSt('No text found in that file. Scanned PDFs are images and cannot be read.'); return; }
-      $('script').value=out; script=out; fileName=f.name; persist();
-    }catch(err){ setSt("Couldn't read that file: "+(err&&err.message||err)) }
-  };
-
-  // ---- saved script: this browser, plus a file in your GitHub repo when sync is set up ----
-  function ghCfg(){
-    var r=load('tp_ghrepo'), t=load('tp_ghtok');
-    return (r&&t)?{r:r,t:t,p:load('tp_ghpath')||'teleprompter-script.json'}:null;
-  }
-  function ghUrl(c){ return 'https://api.github.com/repos/'+c.r+'/contents/'+c.p }
-  function ghHead(c,post){
-    var h={Authorization:'Bearer '+c.t,Accept:'application/vnd.github+json'};
-    if(post) h['Content-Type']='application/json'; return h;
-  }
-  function b64(str){ var o='', a=new TextEncoder().encode(str); a.forEach(function(c){ o+=String.fromCharCode(c) }); return btoa(o) }
-  function unb64(str){
-    var o=atob(str.replace(/\s/g,'')), a=new Uint8Array(o.length);
-    for(var i=0;i<o.length;i++) a[i]=o.charCodeAt(i);
-    return new TextDecoder().decode(a);
-  }
-  async function ghGet(c){
-    var r=await fetch(ghUrl(c)+'?t='+Date.now(),{headers:ghHead(c)});
-    if(r.status===404) return null;
-    if(!r.ok) throw new Error('GitHub error '+r.status);
-    var j=await r.json(); return {sha:j.sha, data:JSON.parse(unb64(j.content))};
-  }
-  async function ghPut(c,rec){
-    var cur=await ghGet(c), body={message:'Update teleprompter script',content:b64(JSON.stringify(rec))};
-    if(cur) body.sha=cur.sha;
-    var r=await fetch(ghUrl(c),{method:'PUT',headers:ghHead(c,1),body:JSON.stringify(body)});
-    if(!r.ok) throw new Error('GitHub error '+r.status+' (check the repo name and token)');
-  }
-  async function ghDel(c){
-    var cur=await ghGet(c); if(!cur) return;
-    var r=await fetch(ghUrl(c),{method:'DELETE',headers:ghHead(c,1),body:JSON.stringify({message:'Clear teleprompter script',sha:cur.sha})});
-    if(!r.ok) throw new Error('GitHub error '+r.status);
-  }
-  function persist(){
-    var ts=Date.now(), c=ghCfg();
-    save('tp_script',script); save('tp_name',fileName); save('tp_ts',String(ts));
-    setSt(stateText());
-    if(c){
-      setSt('Saved here. Syncing to GitHub…');
-      ghPut(c,{script:script,name:fileName,ts:ts}).then(function(){ setSt(stateText()) },
-        function(e){ setSt('Saved on this device, but GitHub sync failed: '+e.message) });
-    }
-  }
-  async function pull(){
-    var c=ghCfg(); if(!c) return;
-    try{
-      var g=await ghGet(c), r=g&&g.data;
-      if(r && r.script && (+r.ts||0)>num('tp_ts',0)){
-        script=r.script; fileName=r.name||''; save('tp_script',script); save('tp_name',fileName); save('tp_ts',String(r.ts));
-        if(!running && $('editor').style.display!=='flex') render();
-        setSt('Loaded the latest script from GitHub.');
-      } else if(!r && load('tp_script')){
-        await ghPut(c,{script:script,name:fileName,ts:num('tp_ts',Date.now())});
-      }
-    }catch(e){ setSt('GitHub sync problem: '+e.message) }
-  }
-  $('ghSave').onclick=function(){
-    var r=$('ghRepo').value.trim(), t=$('ghTok').value.trim(), p=$('ghPath').value.trim();
-    if(!/^[\w.-]+\/[\w.-]+$/.test(r)||!t){ setSt('Enter the repo as owner/repo and a token.'); return; }
-    save('tp_ghrepo',r); save('tp_ghtok',t); save('tp_ghpath',p||'teleprompter-script.json');
-    setSt('Sync settings saved. Checking GitHub…'); pull().then(function(){ if(!stEl.textContent.match(/problem|Loaded/)) setSt('GitHub sync is on.') });
-  };
-  var armed=false;
-  $('clear').onclick=function(){
-    var b=this;
-    if(!armed){ armed=true; b.textContent='Tap again to clear'; b.classList.add('on');
-      setTimeout(function(){ armed=false; b.textContent='Clear saved script'; b.classList.remove('on') },4000); return; }
-    armed=false; b.textContent='Clear saved script'; b.classList.remove('on');
-    drop('tp_script'); drop('tp_name'); drop('tp_ts');
-    script=DEFAULT; fileName=''; $('script').value='';
-    var c=ghCfg();
-    if(c) ghDel(c).then(function(){ setSt('Cleared from this device and GitHub.') },function(e){ setSt('Cleared here, but GitHub failed: '+e.message) });
-    else setSt('Cleared from this device.');
-  };
-  pull();
 
   // ---- voice ----
   function handle(spoken){
@@ -495,6 +326,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   }
   requestAnimationFrame(frame);
 
+  // ---- drag / tap ----
   var down=false, startY=0, lastY=0, moved=false;
   stage.addEventListener('pointerdown',function(e){ down=true; moved=false; startY=lastY=e.clientY; stage.setPointerCapture(e.pointerId) });
   stage.addEventListener('pointermove',function(e){
@@ -512,6 +344,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   stage.addEventListener('pointerup',up);
   stage.addEventListener('pointercancel',function(){ down=false });
 
+  // ---- controls ----
   function setMode(m){
     mode=m; pause(); restart();
     $('m-auto').classList.toggle('on',m==='auto'); $('m-voice').classList.toggle('on',m==='voice');
@@ -535,22 +368,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   };
   function frameSlider(id,key,storeKey){
     $(id).value=F[key];
-    $(id).oninput=function(e){ F[key]=+e.target.value; save(storeKey,F[key]); relayout(applyView) };
+    $(id).oninput=function(e){
+      F[key]=+e.target.value; save(storeKey,F[key]);
+      relayout(applyView);
+    };
   }
   frameSlider('fw','w','tp_fw2'); frameSlider('fh','h','tp_fh2'); frameSlider('ft','t','tp_ft2');
   $('mirror').onclick=function(){
     var on=this.classList.toggle('on'); $('flip').style.transform=on?'scaleX(-1)':'';
   };
-  $('edit').onclick=function(){
-    pause(); $('script').value=(load('tp_script')||fileName)?script:''; 
-    if(!$('script').value) $('script').value=script;
-    setSt(load('tp_script')?stateText():'Nothing saved yet.');
-    $('ghRepo').value=load('tp_ghrepo')||''; $('ghPath').value=load('tp_ghpath')||''; $('ghTok').value=load('tp_ghtok')||'';
-    $('editor').style.display='flex';
-  };
+  $('edit').onclick=function(){ pause(); $('script').value=script; $('editor').style.display='flex' };
   $('done').onclick=function(){
-    script=$('script').value.trim()||DEFAULT;
-    if($('script').value.trim()) persist();
+    script=$('script').value.trim()||DEFAULT; save('tp_script',script);
     $('editor').style.display='none'; render();
   };
   window.addEventListener('resize',function(){ applyView() });
